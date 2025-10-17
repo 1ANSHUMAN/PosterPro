@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Poster Pro — Local Ads Hub</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  /* -------------------
+     Variables & Reset
+     ------------------- */
+  :root{
+    --bg-dark:#04040a;
+    --panel: rgba(255,255,255,0.03);
+    --glass: rgba(255,255,255,0.04);
+    --glass-strong: rgba(255,255,255,0.06);
+    --text: #eaf6ff;
+    --muted: rgba(234,246,255,0.55);
+    --accent-size: 3px;
+    --card-radius: 14px;
+  }
+  * { box-sizing: border-box; margin:0; padding:0; }
+  html,body{height:100%}
+  body{
+    font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    background: var(--bg-dark);
+    color:var(--text);
+    -webkit-font-smoothing:antialiased;
+    -moz-osx-font-smoothing:grayscale;
+    overflow-y: auto;
+    padding:28px;
+    display:flex;
+    justify-content:center;
+    align-items:flex-start;
+  }
+
+  /* -------------------
+     Animated RGB background (slow)
+     ------------------- */
+  .bg-wrap{
+    position:fixed; inset:0; z-index:0; pointer-events:none; overflow:hidden;
+    background: radial-gradient(800px 300px at 10% 10%, rgba(0,216,255,0.04), transparent),
+                radial-gradient(600px 260px at 90% 80%, rgba(255,69,0,0.03), transparent);
+  }
+  .rgb-gradient{
+    position:absolute; inset:-20% -20% -20% -20%; z-index:0; filter:blur(60px);
+    background: linear-gradient(45deg, rgba(0,216,255,0.11), rgba(159,0,255,0.11), rgba(255,71,71,0.11), rgba(255,210,0,0.11));
+    background-size: 300% 300%;
+    animation: rgbShift 18s linear infinite;
+    mix-blend-mode: screen;
+  }
+  @keyframes rgbShift{
+    0%{ background-position:0% 50%}
+    50%{ background-position:100% 50%}
+    100%{ background-position:0% 50%}
+  }
+
+  /* Particle / starfield */
+  .particles{ position:absolute; inset:0; z-index:0; pointer-events:none; opacity:0.9; }
+  .particle{ position:absolute; width:4px; height:4px; border-radius:50%; opacity:0.9; box-shadow:0 0 8px rgba(255,255,255,0.85); }
+
+  /* App container */
+  .app{
+    position:relative;
+    z-index:2;
+    width:100%;
+    max-width:1140px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+    border-radius:18px;
+    border: 1px solid rgba(255,255,255,0.03);
+    padding:22px;
+    box-shadow: 0 18px 80px rgba(0,0,0,0.7);
+    overflow:hidden;
+  }
+
+  /* neon top border lines */
+  .edge-lines{
+    position:absolute; inset:0; pointer-events:none; z-index:3;
+  }
+  .edge-lines::before, .edge-lines::after{
+    content:"";
+    position:absolute; left:-30px; right:-30px; height:4px; top:8px;
+    background: linear-gradient(90deg, #00d8ff, #9b5cff, #ff5f2e, #ffd400);
+    background-size: 200% 100%;
+    filter: blur(6px);
+    opacity:0.9;
+    animation: slideHue 6s linear infinite;
+  }
+  .edge-lines::after{
+    top:auto; bottom:8px; transform:rotate(180deg);
+    animation-duration:7s;
+  }
+  @keyframes slideHue{ from{background-position:0% 50%} to{background-position:100% 50%} }
+
+  /* Header / animated logo text */
+  header{
+    display:flex; align-items:center; gap:18px; margin-bottom:12px; position:relative; z-index:4;
+  }
+  .logo-text{
+    font-family:"Orbitron", monospace;
+    font-size:36px; letter-spacing:1px; color:transparent;
+    -webkit-text-stroke: 0.8px rgba(255,255,255,0.06);
+    background: linear-gradient(90deg,#00d8ff,#9b5cff,#ff5f2e,#ffd400);
+    background-clip:text; -webkit-background-clip:text;
+    animation: neonGlow 2.2s ease-in-out infinite;
+  }
+  @keyframes neonGlow{
+    0%{ filter:drop-shadow(0 0 6px rgba(0,216,255,0.08)) drop-shadow(0 0 20px rgba(255,95,46,0.02)); transform:translateY(0)}
+    50%{ filter:drop-shadow(0 0 18px rgba(0,216,255,0.18)) drop-shadow(0 0 28px rgba(255,95,46,0.06)); transform:translateY(-4px)}
+    100%{ filter:drop-shadow(0 0 6px rgba(0,216,255,0.08)) transform:translateY(0) }
+  }
+
+  /* typing subtitle */
+  .typing {
+    font-family: Inter, sans-serif;
+    color: var(--muted);
+    font-size:14px;
+    margin-top:4px;
+    height:20px;
+    overflow:hidden;
+  }
+  .cursor { display:inline-block; width:2px; height:18px; background:linear-gradient(180deg,#fff,#999); margin-left:6px; animation: blink 0.8s step-end infinite; vertical-align:middle; }
+  @keyframes blink{ 50%{opacity:0} }
+
+  /* Layout controls */
+  .controls{
+    display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:18px;
+  }
+  .left-controls{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .btn{
+    padding:10px 14px; border-radius:999px; border:none; cursor:pointer; font-weight:700;
+    background: linear-gradient(90deg,#00d8ff,#ff5f2e);
+    color:#051018; box-shadow: 0 8px 30px rgba(0,216,255,0.06), 0 8px 30px rgba(255,95,46,0.04);
+    transform:translateZ(0);
+    transition: transform .18s ease, box-shadow .18s ease;
+  }
+  .btn:hover{ transform:translateY(-6px) scale(1.02); box-shadow: 0 18px 50px rgba(0,216,255,0.12); }
+  .btn.secondary{
+    background:transparent; color:var(--text); border:1px solid rgba(255,255,255,0.06);
+    box-shadow:none; font-weight:600;
+  }
+
+  /* layout grid */
+  .grid{ display:grid; grid-template-columns: 1fr 380px; gap:20px; align-items:start; }
+  @media (max-width:980px){ .grid{ grid-template-columns:1fr } }
+
+  /* main panel */
+  .panel{
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+    border-radius:var(--card-radius); padding:18px; border:1px solid rgba(255,255,255,0.02);
+    box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+    position:relative; overflow:visible;
+  }
+
+  /* Packages: floating, rgb outline */
+  .packages{ display:flex; flex-wrap:wrap; gap:14px; margin-top:8px; }
+  .card{
+    width:calc(50% - 14px);
+    min-height:120px;
+    padding:14px;
+    border-radius:12px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.018), rgba(0,0,0,0.045));
+    border: 1px solid rgba(255,255,255,0.02);
+    position:relative; overflow:visible;
+    transition: transform .5s cubic-bezier(.2,.9,.2,1), box-shadow .4s;
+    transform-origin:center;
+    box-shadow: 0 12px 34px rgba(3,6,14,0.6);
+  }
+  .card::before{
+    content:"";
+    position:absolute; inset:-2px; border-radius:14px;
+    background: linear-gradient(60deg, rgba(0,216,255,0.12), rgba(155,92,255,0.12), rgba(255,95,46,0.12), rgba(255,210,0,0.12));
+    filter: blur(12px);
+    opacity:0;
+    transition:opacity .4s ease;
+    pointer-events:none;
+  }
+  .card:hover{ transform: translateY(-12px) rotate(-0.3deg); box-shadow:0 28px 80px rgba(2,12,30,0.7); }
+  .card:hover::before{ opacity:1; }
+
+  .tag{
+    position:absolute; right:12px; top:12px; padding:6px 10px; border-radius:999px; font-weight:800;
+    background: linear-gradient(90deg,#00d8ff,#ff5f2e); color:#041018; font-size:13px;
+  }
+  .card h3{ font-family:"Orbitron"; font-size:16px; margin-bottom:6px; color: #e8fbff; }
+  .card p{ color:var(--muted); font-size:13px; margin-bottom:8px; }
+  .features{ color:rgba(234,246,255,0.78); font-size:13px; margin-bottom:10px; }
+
+  /* floating animation delays */
+  .card[data-float="1"]{ animation: floaty 6s ease-in-out infinite; }
+  .card[data-float="2"]{ animation: floaty 7.5s ease-in-out infinite; }
+  .card[data-float="3"]{ animation: floaty 6.8s ease-in-out infinite; }
+  .card[data-float="4"]{ animation: floaty 8.2s ease-in-out infinite; }
+  @keyframes floaty{ 0%{transform:translateY(0)} 50%{transform:translateY(-8px)} 100%{transform:translateY(0)} }
+
+  /* side gallery */
+  .gallery{ display:flex; flex-wrap:wrap; gap:10px; margin-top:12px; }
+  .poster{
+    width:calc(50% - 10px); height:100px; border-radius:10px; display:flex; align-items:center; justify-content:center;
+    font-weight:700; color:rgba(255,255,255,0.9); cursor:pointer; position:relative; overflow:hidden;
+    transition: transform .28s ease, box-shadow .28s ease;
+    border:1px solid rgba(255,255,255,0.03);
+  }
+  .poster:hover{ transform:scale(1.06) translateY(-6px); box-shadow:0 20px 60px rgba(0,0,0,0.7); filter:brightness(1.06); }
+
+  /* orders list */
+  .orders-short{ margin-top:12px; display:flex; flex-direction:column; gap:8px; }
+
+  /* modal (glass) */
+  .modal{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:9999; }
+  .modal.show{ display:flex; }
+  .modal-back{ position:absolute; inset:0; background:rgba(0,0,0,0.6); backdrop-filter: blur(6px); }
+  .modal-panel{
+    position:relative; width:720px; max-width:94%; border-radius:12px; padding:18px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+    border:1px solid rgba(255,255,255,0.03); box-shadow:0 24px 100px rgba(0,0,0,0.8);
+  }
+  .close{ position:absolute; right:12px; top:12px; cursor:pointer; font-size:22px; color:rgba(255,255,255,0.8); }
+
+  input, select, textarea{
+    width:100%; padding:10px; border-radius:10px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.04);
+    color:var(--text); outline:none; transition: box-shadow .18s ease, border-color .18s ease, transform .12s;
+  }
+  input:focus, select:focus, textarea:focus{
+    box-shadow: 0 6px 30px rgba(0,216,255,0.06), 0 6px 30px rgba(255,95,46,0.04);
+    border-color: rgba(0,216,255,0.18);
+    transform: translateY(-2px);
+  }
+
+  label{ font-size:13px; color:var(--muted); margin-bottom:6px; display:block; }
+
+  table{ width:100%; border-collapse:collapse; margin-top:8px; font-size:13px; }
+  th,td{ padding:8px; border-bottom:1px dashed rgba(255,255,255,0.03); text-align:left; }
+  th{ color:var(--muted); font-size:12px; }
+
+  footer{ margin-top:16px; color:rgba(255,255,255,0.5); text-align:center; font-size:13px; }
+
+  /* entrance animations */
+  .reveal{ opacity:0; transform: translateY(18px); animation: slideUp .7s forwards; }
+  .reveal.delay-1{ animation-delay:0.08s }
+  .reveal.delay-2{ animation-delay:0.16s }
+  .reveal.delay-3{ animation-delay:0.26s }
+  .reveal.delay-4{ animation-delay:0.34s }
+  @keyframes slideUp{ to{ opacity:1; transform:translateY(0) } }
+
+  /* small helper */
+  .muted{ color:var(--muted); font-size:13px; }
+</style>
+</head>
+<body>
+  <!-- animated background + particles -->
+  <div class="bg-wrap" aria-hidden="true">
+    <div class="rgb-gradient"></div>
+    <canvas class="particles" id="particles"></canvas>
+  </div>
+
+  <div class="app" role="application" aria-labelledby="app-title">
+    <div class="edge-lines" aria-hidden="true"></div>
+
+    <header class="reveal">
+      <div>
+        <div class="logo-text" id="logoText">Poster Pro</div>
+        <div class="typing" id="typingLine"><span id="typed"></span><span class="cursor"></span></div>
+      </div>
+    </header>
+
+    <div class="controls reveal delay-1">
+      <div class="left-controls">
+        <button class="btn" id="btn-new-poster">Create Poster</button>
+        <button class="btn secondary" id="btn-view-orders">View Orders</button>
+        <button class="btn secondary" id="btn-export">Export CSV</button>
+      </div>
+      <div class="muted">Theme: <strong style="color: #fff; margin-left:6px">RGB Neon</strong></div>
+    </div>
+
+    <div class="grid">
+      <main class="panel reveal delay-2" id="mainPanel">
+        <h2 style="color:#ffd36a; font-family:Orbitron; margin-bottom:6px">Packages</h2>
+        <div class="packages" id="packages">
+          <!-- cards injected by JS -->
+        </div>
+
+        <section style="margin-top:18px">
+          <h3 style="color:#9becff; font-size:15px; margin-bottom:6px">About Poster Pro</h3>
+          <p class="muted">Ultra-dynamic poster ordering for local vendors — animated UI, fast workflow. Orders are stored locally for demo. Integrate Google Sheets or Firebase later.</p>
+        </section>
+      </main>
+
+      <aside class="panel reveal delay-3" id="sidePanel">
+        <h3 style="color:#9becff; margin-bottom:8px">Poster Gallery</h3>
+        <div class="gallery" id="gallery"></div>
+
+        <h3 style="color:#ffd36a; margin-top:14px">Quick Orders</h3>
+        <div class="orders-short" id="orders-short">
+          <p class="muted">No orders yet — create one by buying a package.</p>
+        </div>
+      </aside>
+    </div>
+
+    <div style="margin-top:18px" class="reveal delay-4">
+      <h3 style="margin:0 0 8px 0">Orders & Tracking</h3>
+      <div id="orders-panel">
+        <p class="muted">Open <strong>View Orders</strong> to manage orders, toggle status, or export CSV.</p>
+      </div>
+    </div>
+
+    <footer class="reveal delay-4">Poster Pro • Neon RGB Edition • Built for local vendors</footer>
+  </div>
+
+  <!-- BUY modal -->
+  <div class="modal" id="modal-buy" aria-hidden="true" role="dialog" aria-modal="true">
+    <div class="modal-back" id="modal-back"></div>
+    <div class="modal-panel" role="document">
+      <div class="close" id="modal-close">&times;</div>
+      <h2 id="modal-title" style="color:#9becff">Buy Package</h2>
+      <div id="modal-sub" class="muted" style="margin-bottom:8px"></div>
+
+      <form id="buy-form">
+        <input type="hidden" id="package-id" />
+        <div style="display:flex; gap:10px; margin-bottom:10px">
+          <div style="flex:1">
+            <label for="shop-name">Shop / Business Name</label>
+            <input id="shop-name" type="text" placeholder="e.g. Sharma Kirana Store" required>
+          </div>
+          <div style="flex:1">
+            <label for="owner-name">Owner Name</label>
+            <input id="owner-name" type="text" placeholder="e.g. Ramesh Sharma" required>
+          </div>
+        </div>
+
+        <div style="display:flex; gap:10px; margin-bottom:10px">
+          <div style="flex:1">
+            <label for="phone">Contact Phone</label>
+            <input id="phone" type="tel" placeholder="Phone or WhatsApp" required>
+          </div>
+          <div style="flex:1">
+            <label for="qty">Quantity (posters)</label>
+            <input id="qty" type="text" placeholder="e.g. 10" value="10" required>
+          </div>
+        </div>
+
+        <div style="margin-bottom:10px">
+          <label for="addon">Add-on</label>
+          <select id="addon">
+            <option value="none">None — Offline poster only</option>
+            <option value="social_basic">Social Boost — 1 post (₹100)</option>
+            <option value="social_standard">Social Boost — 3 posts (₹250)</option>
+            <option value="social_premium">Social Boost — 5 posts (₹400)</option>
+          </select>
+        </div>
+
+        <div style="margin-bottom:12px">
+          <label for="notes">Notes (logo, message, preferred colors)</label>
+          <textarea id="notes" rows="3" placeholder="Short instructions or shop address"></textarea>
+        </div>
+
+        <div style="display:flex; gap:8px; justify-content:flex-end">
+          <button type="button" class="btn secondary" id="cancel-buy">Cancel</button>
+          <button type="submit" class="btn" id="confirm-buy">Confirm & Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ORDERS modal -->
+  <div class="modal" id="modal-orders" aria-hidden="true" role="dialog" aria-modal="true">
+    <div class="modal-back" id="orders-back"></div>
+    <div class="modal-panel" role="document">
+      <div class="close" id="orders-close">&times;</div>
+      <h2 style="color:#9becff">Orders</h2>
+      <div class="muted" style="margin-top:6px; margin-bottom:8px">Manage, filter & export</div>
+
+      <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px">
+        <label class="muted" style="width:70px">Filter</label>
+        <select id="order-filter">
+          <option value="all">All</option>
+          <option value="pending">Pending</option>
+          <option value="completed">Completed</option>
+        </select>
+        <button class="btn secondary" id="clear-orders" style="margin-left:auto">Clear All</button>
+      </div>
+
+      <div style="max-height:360px; overflow:auto; padding-right:6px">
+        <table id="orders-table" aria-describedby="Orders">
+          <thead><tr><th>Shop</th><th>Package</th><th>Qty</th><th>Addon</th><th>Contact</th><th>Status</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+<script>
+/* =====================
+   Dynamic app JS
+   ===================== */
+
+/* --- Particle field (canvas) --- */
+(function(){
+  const cvs = document.getElementById('particles');
+  const ctx = cvs.getContext('2d');
+  let w = cvs.width = innerWidth;
+  let h = cvs.height = innerHeight;
+  window.addEventListener('resize', ()=>{ w = cvs.width = innerWidth; h = cvs.height = innerHeight; initParticles(); });
+
+  let particles = [];
+  function initParticles(){
+    particles = [];
+    const cnt = Math.round((w*h)/70000); // density
+    for(let i=0;i<cnt;i++){
+      particles.push({
+        x: Math.random()*w,
+        y: Math.random()*h,
+        r: (Math.random()*1.6)+0.6,
+        vx: (Math.random()-0.5)*0.15,
+        vy: (Math.random()-0.5)*0.15,
+        alpha: 0.3 + Math.random()*0.8,
+        hueShift: Math.random()*360
+      });
+    }
+  }
+  function draw(){
+    ctx.clearRect(0,0,w,h);
+    for(let p of particles){
+      p.x += p.vx; p.y += p.vy;
+      if(p.x < -10) p.x = w + 10;
+      if(p.x > w + 10) p.x = -10;
+      if(p.y < -10) p.y = h + 10;
+      if(p.y > h + 10) p.y = -10;
+      const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r*10);
+      const hue = (Date.now()/80 + p.hueShift) % 360;
+      g.addColorStop(0, `hsla(${hue},90%,70%,${p.alpha})`);
+      g.addColorStop(0.4, `hsla(${hue},90%,60%,${p.alpha*0.25})`);
+      g.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r*10, 0, Math.PI*2);
+      ctx.fill();
+    }
+    requestAnimationFrame(draw);
+  }
+  initParticles();
+  draw();
+})();
+
+/* --- typing hero --- */
+(function(){
+  const phrases = [
+    "Advertise locally. Shine globally.",
+    "Posters • Flyers • Social Boosts",
+    "Fast turnaround • Affordable pricing",
+    "Create. Print. Promote."
+  ];
+  const el = document.getElementById('typed');
+  let pi = 0, ci = 0, forward = true;
+  function step(){
+    const text = phrases[pi];
+    if(forward){
+      ci++;
+      el.textContent = text.slice(0,ci);
+      if(ci === text.length){ forward = false; setTimeout(step,1200); return; }
+    } else {
+      ci--;
+      el.textContent = text.slice(0,ci);
+      if(ci === 0){ forward = true; pi = (pi+1)%phrases.length; setTimeout(step,200); return; }
+    }
+    setTimeout(step, 40 + Math.random()*40);
+  }
+  step();
+})();
+
+/* -------------------------
+   Data and utilities
+   ------------------------- */
+const PACKAGES = [
+  { id: 'basic', name: 'Basic Poster', price: 50, desc: 'B/W poster • quick print', features:['5 pcs','B/W print','2-3 days'] },
+  { id: 'standard', name: 'Standard Poster', price: 120, desc: 'Full color • matte', features:['10 pcs','Color','Matte finish'] },
+  { id: 'premium', name: 'Premium Poster', price: 360, desc: 'Glossy • 1 social share', features:['20 pcs','Glossy','1 social post'] },
+  { id: 'boost', name: 'Social Boost', price: 250, desc: 'Online boost package', features:['3 social posts','Instagram/WhatsApp','Design included'] }
+];
+const SAMPLE_POSTERS = [
+  { id:'p1', title:'Bakery Grand Sale', color:'#00d8ff' },
+  { id:'p2', title:'Tuition Classes', color:'#9b5cff' },
+  { id:'p3', title:'Salon Offer', color:'#ff5f2e' },
+  { id:'p4', title:'Event Flyer', color:'#ffd400' }
+];
+
+let orders = [];
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+
+/* --- localStorage --- */
+function loadOrders(){ try{ orders = JSON.parse(localStorage.getItem('posterpro_orders')||'[]'); }catch(e){ orders=[]; } }
+function saveOrders(){ localStorage.setItem('posterpro_orders', JSON.stringify(orders)); }
+
+/* --- render packages --- */
+function renderPackages(){
+  const wrap = $('#packages'); wrap.innerHTML='';
+  PACKAGES.forEach((p,i)=>{
+    const div = document.createElement('div');
+    div.className='card reveal';
+    div.dataset.float = (i%4)+1;
+    div.style.animationDelay = `${0.05*i}s`;
+    div.innerHTML = `
+      <div class="tag">₹${p.price}</div>
+      <h3>${p.name}</h3>
+      <p class="muted">${p.desc}</p>
+      <div class="features">${p.features.map(f=>`• ${f}`).join('<br>')}</div>
+      <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:10px">
+        <button class="btn secondary" data-id="${p.id}" data-action="preview">Preview</button>
+        <button class="btn" data-id="${p.id}" data-action="buy">Buy</button>
+      </div>
+    `;
+    wrap.appendChild(div);
+  });
+}
+
+/* --- render gallery --- */
+function renderGallery(){
+  const g = $('#gallery'); g.innerHTML='';
+  SAMPLE_POSTERS.forEach(p=>{
+    const el = document.createElement('div');
+    el.className='poster';
+    el.textContent = p.title;
+    el.style.background = `linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.03)), repeating-linear-gradient(45deg, ${p.color}, ${p.color}55 25%)`;
+    el.addEventListener('click', ()=> previewPoster(p));
+    g.appendChild(el);
+  });
+}
+
+/* --- orders short list --- */
+function renderOrdersShort(){
+  const wrap = $('#orders-short'); wrap.innerHTML='';
+  if(!orders.length){ wrap.innerHTML = '<p class="muted">No orders yet — create one by buying a package.</p>'; return; }
+  const list = document.createElement('div');
+  orders.slice(-5).reverse().forEach(o=>{
+    const row = document.createElement('div');
+    row.style.display='flex'; row.style.justifyContent='space-between'; row.style.alignItems='center';
+    row.innerHTML = `<div><strong>${o.shop}</strong><div class="muted">${o.pkgName} • ${o.qty} pcs</div></div><div class="muted">${o.status}</div>`;
+    list.appendChild(row);
+  });
+  wrap.appendChild(list);
+}
+
+/* --- preview poster --- */
+function previewPoster(p){
+  alert(`${p.title}\n\n(Placeholder preview — replace with generated image later.)`);
+}
+
+/* --- Modal controls --- */
+function openBuyModal(id){
+  const pkg = PACKAGES.find(x=>x.id===id) || PACKAGES[0];
+  $('#modal-buy').classList.add('show'); $('#modal-buy').setAttribute('aria-hidden','false');
+  $('#modal-sub').textContent = `${pkg.name} — ₹${pkg.price}`;
+  $('#package-id').value = pkg.id;
+  $('#shop-name').value=''; $('#owner-name').value=''; $('#phone').value=''; $('#qty').value='10';
+  $('#addon').value='none'; $('#notes').value='';
+  setTimeout(()=>$('#shop-name').focus(),80);
+}
+function closeBuyModal(){ $('#modal-buy').classList.remove('show'); $('#modal-buy').setAttribute('aria-hidden','true'); }
+function openOrdersModal(){ refreshOrdersTable(); $('#modal-orders').classList.add('show'); $('#modal-orders').setAttribute('aria-hidden','false'); }
+function closeOrdersModal(){ $('#modal-orders').classList.remove('show'); $('#modal-orders').setAttribute('aria-hidden','true'); }
+
+/* --- orders table --- */
+function refreshOrdersTable(){
+  const tbody = document.querySelector('#orders-table tbody'); tbody.innerHTML='';
+  const filter = $('#order-filter').value;
+  orders.forEach((o, idx)=>{
+    if(filter !== 'all' && o.status.toLowerCase() !== filter) return;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><strong>${o.shop}</strong><div class="muted">${o.owner}</div></td>
+      <td>${o.pkgName}</td>
+      <td>${o.qty}</td>
+      <td>${o.addonLabel||'None'}</td>
+      <td class="muted">${o.contact}</td>
+      <td><span class="muted">${o.status}</span></td>
+      <td style="text-align:right">
+        <button class="btn secondary" data-idx="${idx}" data-action="toggle">Toggle</button>
+        <button class="btn" data-idx="${idx}" data-action="delete">Delete</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+/* --- events --- */
+document.addEventListener('click', (e)=>{
+  const buyBtn = e.target.closest('button[data-action="buy"]');
+  if(buyBtn){ openBuyModal(buyBtn.dataset.id); return; }
+  const previewBtn = e.target.closest('button[data-action="preview"]');
+  if(previewBtn){ const p = PACKAGES.find(x=>x.id===previewBtn.dataset.id); previewPoster(p); return; }
+
+  // orders actions (toggle/delete)
+  const ordersAction = e.target.closest('button[data-action]');
+  if(ordersAction && (ordersAction.dataset.action === 'toggle' || ordersAction.dataset.action === 'delete')){
+    const idx = parseInt(ordersAction.dataset.idx);
+    if(ordersAction.dataset.action === 'toggle'){ orders[idx].status = orders[idx].status === 'Pending' ? 'Completed' : 'Pending'; saveOrders(); renderOrdersShort(); refreshOrdersTable(); }
+    if(ordersAction.dataset.action === 'delete'){ if(confirm('Delete this order?')){ orders.splice(idx,1); saveOrders(); renderOrdersShort(); refreshOrdersTable(); } }
+    return;
+  }
+});
+
+// header buttons
+$('#btn-new-poster').addEventListener('click', ()=> openBuyModal(PACKAGES[0].id));
+$('#btn-view-orders').addEventListener('click', ()=> openOrdersModal());
+$('#modal-close').addEventListener('click', ()=> closeBuyModal());
+$('#cancel-buy').addEventListener('click', (e)=>{ e.preventDefault(); closeBuyModal(); });
+
+$('#orders-close').addEventListener('click', ()=> closeOrdersModal());
+$('#order-filter').addEventListener('change', ()=> refreshOrdersTable());
+$('#clear-orders').addEventListener('click', ()=>{ if(confirm('Clear all orders?')){ orders=[]; saveOrders(); renderOrdersShort(); refreshOrdersTable(); closeOrdersModal(); } });
+
+/* --- buy form submit --- */
+$('#buy-form').addEventListener('submit', (e)=>{
+  e.preventDefault();
+  const pkgId = $('#package-id').value; const pkg = PACKAGES.find(p=>p.id===pkgId) || PACKAGES[0];
+  const shop = $('#shop-name').value.trim(); const owner = $('#owner-name').value.trim();
+  const contact = $('#phone').value.trim(); const qty = ($('#qty').value||'1').trim();
+  const addon = $('#addon').value; const notes = $('#notes').value.trim();
+  if(!shop || !owner || !contact){ alert('Please fill shop, owner and contact.'); return; }
+
+  const addonLabel = addon === 'none' ? 'None' : addon === 'social_basic' ? 'Social x1 (₹100)' : addon === 'social_standard' ? 'Social x3 (₹250)' : 'Social x5 (₹400)';
+
+  const order = {
+    id: 'ord_'+Date.now(), createdAt: new Date().toISOString(),
+    shop, owner, contact, qty,
+    pkgId, pkgName: pkg.name, addon, addonLabel, notes,
+    status: 'Pending'
+  };
+  orders.push(order); saveOrders(); renderOrdersShort(); refreshOrdersTable(); closeBuyModal(); openOrdersModal();
+});
+
+/* --- CSV export --- */
+function toCSV(arr){
+  if(!arr.length) return '';
+  const keys = ['id','createdAt','shop','owner','contact','pkgName','qty','addonLabel','status','notes'];
+  const header = keys.join(',');
+  const lines = arr.map(o => keys.map(k => `"${(o[k]||'').toString().replace(/"/g,'""')}"`).join(','));
+  return [header].concat(lines).join('\n');
+}
+$('#btn-export').addEventListener('click', ()=>{
+  if(!orders.length){ alert('No orders to export.'); return; }
+  const csv = toCSV(orders);
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download=`posterpro_orders_${Date.now()}.csv`; a.click(); URL.revokeObjectURL(url);
+});
+
+/* --- helper --- */
+function capitalize(s){ return (s||'').charAt(0).toUpperCase() + (s||'').slice(1); }
+
+/* --- init --- */
+function init(){
+  loadOrders();
+  renderPackages();
+  renderGallery();
+  renderOrdersShort();
+
+  // click outside modal to close
+  window.addEventListener('click', (ev)=>{
+    if(ev.target === $('#modal-buy') || ev.target === $('#modal-back')) closeBuyModal();
+    if(ev.target === $('#modal-orders') || ev.target === $('#orders-back')) closeOrdersModal();
+  });
+
+  // keyboard
+  window.addEventListener('keydown', (ev)=>{ if(ev.key === 'Escape'){ closeBuyModal(); closeOrdersModal(); } });
+
+  // small reveal intersection observer for scroll animations
+  const obs = new IntersectionObserver((entries)=>{
+    entries.forEach(ent=>{
+      if(ent.isIntersecting) ent.target.style.opacity = 1, ent.target.style.transform='translateY(0)';
+    });
+  }, { threshold: 0.08 });
+  $$('.reveal').forEach(el=> { el.style.opacity=0; el.style.transform='translateY(18px)'; obs.observe(el); });
+
+  // wire delegated order modal buttons inside table
+  document.getElementById('modal-orders').addEventListener('click', function(e){
+    if(e.target.id === 'orders-close' || e.target === document.getElementById('orders-back')) closeOrdersModal();
+  });
+}
+init();
+</script>
+</body>
+</html>
